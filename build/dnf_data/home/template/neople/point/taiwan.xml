@@ -7,7 +7,7 @@
 <xml>
 
 <option>
-    <charset type="twn"/> <!-- Korea : kor, China : chn, Japan : jpn USA : usa -->
+    <charset type="chn"/> <!-- Korea : kor, China : chn, Japan : jpn USA : usa -->
 </option>
 
 <auction>

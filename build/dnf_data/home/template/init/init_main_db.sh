@@ -18,7 +18,7 @@ fi
 
 echo "init main db $CUR_MAIN_DB_HOST:$CUR_MAIN_DB_PORT"
 # 循环初始化主数据库
-MAIN_DB_LIST=("d_taiwan" "d_taiwan_secu" "d_technical_report")
+MAIN_DB_LIST=("d_taiwan" "d_taiwan_secu" "d_technical_report" "tw")
 
 for db_name in "${MAIN_DB_LIST[@]}"
 do
@@ -53,6 +53,27 @@ flush privileges;
 grant all privileges on *.* to 'game'@'$CUR_MAIN_DB_GAME_ALLOW_IP' identified by '$DNF_DB_GAME_PASSWORD';
 flush privileges;
 EOF
+
+# 清风服务端需要以下三个额外的用户
+mysql -h $CUR_MAIN_DB_HOST -P $CUR_MAIN_DB_PORT -u root -p$CUR_MAIN_DB_ROOT_PASSWORD <<EOF
+delete from mysql.user where user='chhappy' and host='$CUR_MAIN_DB_GAME_ALLOW_IP';
+flush privileges;
+grant all privileges on *.* to 'chhappy'@'$CUR_MAIN_DB_GAME_ALLOW_IP' identified by '$DNF_DB_GAME_PASSWORD';
+flush privileges;
+EOF
+mysql -h $CUR_MAIN_DB_HOST -P $CUR_MAIN_DB_PORT -u root -p$CUR_MAIN_DB_ROOT_PASSWORD <<EOF
+delete from mysql.user where user='supergod' and host='$CUR_MAIN_DB_GAME_ALLOW_IP';
+flush privileges;
+grant all privileges on *.* to 'supergod'@'$CUR_MAIN_DB_GAME_ALLOW_IP' identified by '$DNF_DB_GAME_PASSWORD';
+flush privileges;
+EOF
+mysql -h $CUR_MAIN_DB_HOST -P $CUR_MAIN_DB_PORT -u root -p$CUR_MAIN_DB_ROOT_PASSWORD <<EOF
+delete from mysql.user where user='cash' and host='$CUR_MAIN_DB_GAME_ALLOW_IP';
+flush privileges;
+grant all privileges on *.* to 'cash'@'127.0.0.1' identified by '$DNF_DB_GAME_PASSWORD';
+flush privileges;
+EOF
+
 echo "main db: flush privileges done."
 # 重置当前大区的主数据库d_taiwan.db_connect表配置
 echo "main_db: reset db_connect config, server_group is $SERVER_GROUP"

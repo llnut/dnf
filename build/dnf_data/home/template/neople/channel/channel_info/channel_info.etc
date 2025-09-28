@@ -168,6 +168,7 @@
 [dungeon]
 `[dragonroad]`
 <4::channel_info_dname_14>
+3011
 [/dungeon]
 
 
@@ -190,7 +191,7 @@
    1   <4::channel_info_cname_508>   11   `[deathtower]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    6   <4::channel_info_cname_6>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    7   <4::channel_info_cname_7>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
-   11   <4::channel_info_cname_11>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+   11   <4::channel_info_cname_11>   0   `[dragonroad]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    12   <4::channel_info_cname_12>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    13   <4::channel_info_cname_13>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    14   <4::channel_info_cname_14>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
@@ -227,7 +228,7 @@
    1   <4::channel_info_cname_508>   11   `[deathtower]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    6   <4::channel_info_cname_6>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    7   <4::channel_info_cname_7>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
-   11   <4::channel_info_cname_11>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+   11   <4::channel_info_cname_11>   0   `[dragonroad]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    12   <4::channel_info_cname_12>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    13   <4::channel_info_cname_13>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    14   <4::channel_info_cname_14>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
@@ -264,7 +265,7 @@
    1   <4::channel_info_cname_508>   11   `[deathtower]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    6   <4::channel_info_cname_6>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    7   <4::channel_info_cname_7>   3   `[none]`   0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
-   11   <4::channel_info_cname_11>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
+   11   <4::channel_info_cname_11>   0   `[dragonroad]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    12   <4::channel_info_cname_12>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    13   <4::channel_info_cname_13>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
    14   <4::channel_info_cname_14>   0   `[granfloris]`   5   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0
