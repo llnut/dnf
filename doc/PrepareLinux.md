@@ -77,31 +77,14 @@ sysctl -p
 
 ## 拉取镜像
 
-点击查看所有镜像版本: [记得点赞三连，帮助更多人了解到该镜像](https://hub.docker.com/repository/docker/1995chen/dnf)
+点击查看所有镜像版本: [记得点赞三连，帮助更多人了解到该镜像](https://hub.docker.com/repository/docker/llnut/dnf)
 
 最新可用的镜像版本如下所示:
 ```shell
-# 存储在DockerHub官方镜像库中（国内用户可能无法直接获取）
-1995chen/dnf:centos5-2.1.9.fix1
-1995chen/dnf:centos6-2.1.9.fix1
-1995chen/dnf:centos7-2.1.9.fix1
-# 存储在国内阿里云的镜像库中
-registry.cn-hangzhou.aliyuncs.com/1995chen/dnf:centos5-2.1.9.fix1
-registry.cn-hangzhou.aliyuncs.com/1995chen/dnf:centos6-2.1.9.fix1
-registry.cn-hangzhou.aliyuncs.com/1995chen/dnf:centos7-2.1.9.fix1
-```
-以上镜像没有区别，您可以随意选择其中一个进行拉取。
-
-例如，对于国内用户，我们选择阿里云仓库中的任何一个镜像，执行以下命令：
-```
-docker pull registry.cn-hangzhou.aliyuncs.com/1995chen/dnf:centos7-2.1.9.fix1
-```
-如果从`阿里云`拉取的`镜像`需要重新命名，需要`额外`执行以下`命令`：
-```shell
-docker tag registry.cn-hangzhou.aliyuncs.com/1995chen/dnf:centos7-2.1.9.fix1 1995chen/dnf:centos7-2.1.9.fix1
+llnut/dnf:centos7-qf1031-latest
 ```
 
-对于国外用户，直接选择任意一个镜像进行拉取，例如：
+您可使用如下命令拉取镜像，例如：
 ```shell
-docker pull 1995chen/dnf:centos7-2.1.9.fix1
+docker pull llnut/dnf:centos7-qf1031-latest
 ```
