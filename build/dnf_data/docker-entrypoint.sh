@@ -102,6 +102,9 @@ export DEC_GAME_PWD=`/TeaEncrypt $DNF_DB_GAME_PASSWORD`
 echo "game password: $DNF_DB_GAME_PASSWORD"
 echo "game pwd key: $DEC_GAME_PWD"
 
+# 清风版本需要额外的数据库用户
+export DNF_DB_USER_EXTENDED_QF="$(sed "s/[\'\"]//g" <<<"${DNF_DB_USER_EXTENDED_QF:-"supergod,chhappy,cash"}")"
+
 # 清除mysql sock以及pid文件
 rm -rf /var/lib/mysql/mysql.sock
 rm -rf /var/lib/mysql/*.pid

@@ -139,4 +139,23 @@ echo "server group db: show db_connect config, server_group is $SERVER_GROUP"
 mysql -h $CUR_SG_DB_HOST -P $CUR_SG_DB_PORT -u game -p$DNF_DB_GAME_PASSWORD <<EOF
 select gc_type, gc_ip, gc_channel from taiwan_$SERVER_GROUP_DB.game_channel where gc_type=$SERVER_GROUP;
 EOF
+
+# 清风服务端需要配置新增的账户权限[主数据库和大区数据库可能是独立的需要单独配置]
+# 密码与game账户保持一致
+EXTENDED_USERS=()
+IFS=$',' read -ra EXTENDED_USERS <<<"$DNF_DB_USER_EXTENDED_QF"
+for db_user_extended in "${EXTENDED_USERS[@]}"; do
+    echo "server group db: extended user: ${db_user_extended}, flush privileges....."
+    mysql -h $CUR_SG_DB_HOST -P $CUR_SG_DB_PORT -u root -p$CUR_SG_DB_ROOT_PASSWORD <<EOF
+delete from mysql.user where user='$db_user_extended' and host='$CUR_SG_DB_GAME_ALLOW_IP';
+flush privileges;
+grant all privileges on *.* to '$db_user_extended'@'$CUR_SG_DB_GAME_ALLOW_IP' identified by '$DNF_DB_GAME_PASSWORD';
+flush privileges;
+EOF
+    # 测试并查询数据库连接设置
+    echo "server group db: using extended user $db_user_extended to show db_connect config, server_group is $SERVER_GROUP"
+    mysql -h $CUR_SG_DB_HOST -P $CUR_SG_DB_PORT -u $db_user_extended -p$DNF_DB_GAME_PASSWORD <<EOF
+select gc_type, gc_ip, gc_channel from taiwan_$SERVER_GROUP_DB.game_channel where gc_type=$SERVER_GROUP;
+EOF
+done
 echo "server_group_db: init server group-$SERVER_GROUP($SERVER_GROUP_DB) done."
