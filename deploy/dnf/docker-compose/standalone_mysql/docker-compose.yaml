@@ -32,6 +32,7 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=4000
       # 远程数据库root密码
+      - MAIN_MYSQL_ROOT_PASSWORD=88888888
       - DNF_DB_ROOT_PASSWORD=88888888
       # dnf-gate-server配置
       - GATE_AES_KEY=a1b2c3d4e5f6789012345678901234567890abcdef0123456789abcdef012345
