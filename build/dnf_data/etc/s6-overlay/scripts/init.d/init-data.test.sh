@@ -153,7 +153,7 @@ chk "df_dbmw_r 软链正确" "$dbmw_bin" "$(readlink "$dest_path/dbmw_guild/df_d
 chk "df_dbmw_r 可读" "dbmwbin" "$(cat "$dest_path/dbmw_guild/df_dbmw_r")"
 
 chk "生成 privatekey.pem" yes "$(exists "$data_path/privatekey.pem")"
-chk "生成 publickey.pem" yes "$(exists "$data_path/publickey.pem")"
+chk "默认保留用户自定义的 publickey.pem" "pubkey" "$(cat "$data_path/publickey.pem")"
 chk "复制 libhook.so 到 dp" yes "$(exists "$data_path/dp/libhook.so")"
 chk "更新 frida.js" "fridajs" "$(cat "$data_path/frida.js" 2>/dev/null)"
 chk "复制 get_public_ip.sh" yes "$(exists "$data_path/monitor_ip/get_public_ip.sh")"
@@ -178,7 +178,7 @@ chk "二次运行 game 文件列表不变" "$fp1_list" "$(find "$dest_path/game"
 chk "二次运行 cfg 内容正确" "$expected_cfg" "$(cat "$dest_path/game/cfg/test.cfg")"
 chk "二次初始化 Script.pvf 时，软链接仍指向 /data/Script.pvf" "$data_path/Script.pvf" "$(readlink "$dest_path/game/Script.pvf")"
 
-# 重新生成私钥且公钥是软链接时需要先备份再创建新公钥
+# PUBKEY_OVERWRITE=true: 重新生成私钥且公钥是软链接时需要先备份再创建新公钥
 data_path="$WORK/data-pubsym"
 mkdir -p "$data_path/dp"
 echo pvf >"$data_path/Script.pvf"
@@ -186,7 +186,7 @@ echo gamebin >"$data_path/df_game_r"
 printf 'EXTPUBKEY\n' >"$data_path/ext_pub.pem"
 ln -s "$data_path/ext_pub.pem" "$data_path/publickey.pem"
 dest_path="$WORK/neople-pubsym"
-run_hook >/dev/null 2>&1
+PUBKEY_OVERWRITE=true run_hook >/dev/null 2>&1
 chk "pubsym: 退出码 0" 0 "$?"
 chk "pubsym: 生成私钥" "yes" "$([ -f "$data_path/privatekey.pem" ] && [ ! -L "$data_path/privatekey.pem" ] && echo yes || echo no)"
 chk "pubsym: 生成公钥" "yes" "$([ -f "$data_path/publickey.pem" ] && [ ! -L "$data_path/publickey.pem" ] && echo yes || echo no)"
@@ -196,7 +196,7 @@ pubsym_pm=$(openssl rsa -in "$data_path/privatekey.pem" -noout -modulus 2>/dev/n
 pubsym_um=$(openssl rsa -pubin -in "$data_path/publickey.pem" -noout -modulus 2>/dev/null)
 chk "pubsym: 公钥与私钥配对" "yes" "$([ -n "$pubsym_pm" ] && [ "$pubsym_pm" = "$pubsym_um" ] && echo yes || echo no)"
 
-# 私钥为真实文件, 公钥为有效软链接，但公私钥不匹配: 备份软链接并重新生成公钥
+# PUBKEY_OVERWRITE=true: 私钥为真实文件, 公钥为有效软链接，但公私钥不匹配时，备份软链接并重新生成公钥
 data_path="$WORK/data-pubmm"
 mkdir -p "$data_path/dp"
 echo pvf >"$data_path/Script.pvf"
@@ -206,7 +206,7 @@ openssl genrsa -out "$data_path/other_priv.pem" 2048 2>/dev/null
 openssl rsa -in "$data_path/other_priv.pem" -pubout -out "$data_path/other_pub.pem" 2>/dev/null
 ln -s "$data_path/other_pub.pem" "$data_path/publickey.pem"
 dest_path="$WORK/neople-pubmm"
-run_hook >/dev/null 2>&1
+PUBKEY_OVERWRITE=true run_hook >/dev/null 2>&1
 chk "pubmm: 退出码 0" 0 "$?"
 chk "pubmm: 重新创建公钥" "yes" "$([ -f "$data_path/publickey.pem" ] && [ ! -L "$data_path/publickey.pem" ] && echo yes || echo no)"
 chk "pubmm: 旧公钥软链接已备份" 1 "$(find "$data_path" -name 'publickey.pem.*.bak' | wc -l)"
@@ -229,6 +229,64 @@ dest_path="$WORK/neople-pubmatch"
 run_hook >/dev/null 2>&1
 chk "pubmatch: 密钥对匹配则保持不变" "$pubmatch_before" "$(md5sum "$data_path/publickey.pem" | cut -d' ' -f1)"
 chk "pubmatch: 密钥对匹配则不产生备份文件" 0 "$(find "$data_path" -name 'publickey.pem.*.bak' | wc -l)"
+
+# 默认不覆盖: 公私钥不匹配时保留用户自定义公钥, 仅打印告警
+data_path="$WORK/data-pubkeep"
+mkdir -p "$data_path/dp"
+echo pvf >"$data_path/Script.pvf"
+echo gamebin >"$data_path/df_game_r"
+openssl genrsa -out "$data_path/gw_priv.pem" 2048 2>/dev/null
+openssl rsa -in "$data_path/gw_priv.pem" -pubout -out "$data_path/publickey.pem" 2>/dev/null
+pubkeep_before=$(md5sum "$data_path/publickey.pem" | cut -d' ' -f1)
+dest_path="$WORK/neople-pubkeep"
+pubkeep_out=$(run_hook 2>&1)
+chk "pubkeep: 退出码 0" 0 "$?"
+chk "pubkeep: 公钥保持不变" "$pubkeep_before" "$(md5sum "$data_path/publickey.pem" | cut -d' ' -f1)"
+chk "pubkeep: 不产生备份文件" 0 "$(find "$data_path" -name 'publickey.pem.*.bak' | wc -l)"
+chk "pubkeep: 打印公私钥不匹配告警" yes "$(printf '%s' "$pubkeep_out" | grep -q 'publickey.pem does not match privatekey.pem' && echo yes || echo no)"
+chk "pubkeep: 用户公钥复制到 game" "$pubkeep_before" "$(md5sum "$dest_path/game/publickey.pem" | cut -d' ' -f1)"
+
+# 默认不覆盖: 公钥为软链接且不匹配时同样保留
+data_path="$WORK/data-pubkeepsym"
+mkdir -p "$data_path/dp"
+echo pvf >"$data_path/Script.pvf"
+echo gamebin >"$data_path/df_game_r"
+openssl genrsa -out "$data_path/gw_priv.pem" 2048 2>/dev/null
+openssl rsa -in "$data_path/gw_priv.pem" -pubout -out "$data_path/gw_pub.pem" 2>/dev/null
+ln -s "$data_path/gw_pub.pem" "$data_path/publickey.pem"
+dest_path="$WORK/neople-pubkeepsym"
+run_hook >/dev/null 2>&1
+chk "pubkeepsym: 退出码 0" 0 "$?"
+chk "pubkeepsym: 软链接公钥保持不变" "$data_path/gw_pub.pem" "$(readlink "$data_path/publickey.pem")"
+chk "pubkeepsym: 不产生备份文件" 0 "$(find "$data_path" -name 'publickey.pem.*.bak' | wc -l)"
+
+# 默认不覆盖: 公钥软链接无效时, 备份软链接后重新生成
+data_path="$WORK/data-pubbroken"
+mkdir -p "$data_path/dp"
+echo pvf >"$data_path/Script.pvf"
+echo gamebin >"$data_path/df_game_r"
+ln -s "$data_path/no_such_pub.pem" "$data_path/publickey.pem"
+dest_path="$WORK/neople-pubbroken"
+run_hook >/dev/null 2>&1
+chk "pubbroken: 退出码 0" 0 "$?"
+chk "pubbroken: 重新生成的公钥为普通文件" yes "$([ -f "$data_path/publickey.pem" ] && [ ! -L "$data_path/publickey.pem" ] && echo yes || echo no)"
+chk "pubbroken: 旧软链接已备份" 1 "$(find "$data_path" -name 'publickey.pem.*.bak' | wc -l)"
+pubbroken_pm=$(openssl rsa -in "$data_path/privatekey.pem" -noout -modulus 2>/dev/null)
+pubbroken_um=$(openssl rsa -pubin -in "$data_path/publickey.pem" -noout -modulus 2>/dev/null)
+chk "pubbroken: 生成的公钥与私钥匹配" "yes" "$([ -n "$pubbroken_pm" ] && [ "$pubbroken_pm" = "$pubbroken_um" ] && echo yes || echo no)"
+
+# 默认不覆盖: 公钥缺失时仍自动从私钥生成
+data_path="$WORK/data-pubgen"
+mkdir -p "$data_path/dp"
+echo pvf >"$data_path/Script.pvf"
+echo gamebin >"$data_path/df_game_r"
+dest_path="$WORK/neople-pubgen"
+run_hook >/dev/null 2>&1
+chk "pubgen: 退出码 0" 0 "$?"
+chk "pubgen: 公钥缺失时仍生成" yes "$([ -f "$data_path/publickey.pem" ] && echo yes || echo no)"
+pubgen_pm=$(openssl rsa -in "$data_path/privatekey.pem" -noout -modulus 2>/dev/null)
+pubgen_um=$(openssl rsa -pubin -in "$data_path/publickey.pem" -noout -modulus 2>/dev/null)
+chk "pubgen: 生成的公钥与私钥匹配" "yes" "$([ -n "$pubgen_pm" ] && [ "$pubgen_pm" = "$pubgen_um" ] && echo yes || echo no)"
 
 echo "pass=$pass failed=$failed"
 [ "$failed" -eq 0 ]

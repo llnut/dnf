@@ -22,6 +22,8 @@ priv_mod=$(openssl rsa -in "$data_path/privatekey.pem" -noout -modulus 2>/dev/nu
 pub_mod=$(openssl rsa -pubin -in "$data_path/publickey.pem" -noout -modulus 2>/dev/null)
 if [ -n "$priv_mod" ] && [ "$priv_mod" = "$pub_mod" ]; then
     echo "publickey.pem matches privatekey.pem, do nothing!"
+elif [ "${PUBKEY_OVERWRITE:-false}" != "true" ] && [ -e "$data_path/publickey.pem" ]; then
+    echo "WARN: publickey.pem does not match privatekey.pem, keep it unchanged, set PUBKEY_OVERWRITE=true to regenerate" >&2
 else
     if [ -L "$data_path/publickey.pem" ]; then
         mv -f "$data_path/publickey.pem" "$data_path/publickey.pem.$(date +'%Y%m%d-%H%M%S').bak" 2>/dev/null ||

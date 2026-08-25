@@ -98,6 +98,7 @@ ENV S6_STAGE2_HOOK=/etc/s6-overlay/scripts/stage2-hook.sh \
     GATE_TLS_ONLY=false \
     GATE_REGISTRATION_OPEN=true \
     GAME_SERVER_IP='' \
+    PUBKEY_OVERWRITE=false \
     AUTO_TUNE=true \
     TUNE_PROFILE='' \
     TUNE_VERBOSE=false

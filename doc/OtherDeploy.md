@@ -80,6 +80,7 @@
 | DNF_DB_GAME_PASSWORD | DNF数据库game密码，超过 8 位时启动脚本会截断为前 8 位 |  | uu5!^%jg |
 | DNF_DB_USER_EXTENDED | DNF数据库扩展账号，多个账号用逗号分隔，密码与 game 一致 | | 空 |
 | CLIENT_POOL_SIZE | 服务端启动时分配的客户端缓冲池大小，此配置项影响df_bridge_r和df_channel_r的内存占用 | 3-1000 | 10 |
+| PUBKEY_OVERWRITE | 公私钥不匹配时是否用本地私钥重新生成并覆盖公钥，适用于登录网关不在本机或使用简单登录器的场景 | true/false | false |
 
 
 ### 网关配置
