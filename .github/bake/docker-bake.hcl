@@ -49,7 +49,22 @@ function "tag_list" {
 # Targets must be invoked explicitly: db / server depend on a published base image,
 # and full depends on a published db image, so a "build all" group would fail.
 
+# Shared image exporter settings. Every published target inherits this block.
+#
+# oci-artifact=false keeps attestation manifests in the legacy image manifest
+# form. buildkit 0.32.0 changed the default to the OCI artifact form. That
+# form uses application/vnd.oci.empty.v1+json as the config descriptor.
+# Aliyun ACR rejects the descriptor with "unknown manifest class". The
+# release push then fails. Drop this block once Aliyun ACR accepts the OCI
+# artifact form.
+#
+# The buildx --push flag adds push=true to this entry instead of replacing it.
+target "_common" {
+  output = ["type=image,oci-artifact=false"]
+}
+
 target "base" {
+  inherits   = ["_common"]
   context    = "."
   dockerfile = "build/${OS}/Dockerfile.base"
   tags       = tag_list(BASE_TAGS_CSV)
@@ -65,6 +80,7 @@ target "base" {
 }
 
 target "db" {
+  inherits   = ["_common"]
   context    = "."
   dockerfile = "build/${OS}/Dockerfile.db"
   tags       = tag_list(DB_TAGS_CSV)
@@ -87,6 +103,7 @@ target "db" {
 # centos7 has neither builder stage; its Dockerfiles are single-FROM. The cross-
 # reference would never match, so the conditional removes it to avoid noise.
 target "server" {
+  inherits   = ["_common"]
   context    = "."
   dockerfile = "build/${OS}/Dockerfile.server"
   tags       = tag_list(SERVER_TAGS_CSV)
@@ -111,6 +128,7 @@ target "server" {
 }
 
 target "full" {
+  inherits   = ["_common"]
   context    = "."
   dockerfile = "build/${OS}/Dockerfile.full"
   tags       = tag_list(FULL_TAGS_CSV)

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tags:
-        description: 'Tag to build'
+        description: 'Existing release tag to rebuild, for example release-20260903'
         required: true
         type: string
 
@@ -49,20 +49,26 @@ jobs:
           set -euo pipefail
           # shellcheck source=.github/scripts/cache-slug.sh
           . .github/scripts/cache-slug.sh
+          # shellcheck source=.github/scripts/release-tag.sh
+          . .github/scripts/release-tag.sh
+
+          # The release event and workflow_dispatch share this function. A
+          # dispatched rebuild of an existing tag then produces the same image tags.
+          resolve_release() {
+            local tag="$1"
+            if ! TAG_SUFFIX=$(release_tag_suffix "$tag"); then
+              echo "::error::release tag '${tag}' does not match release-YYYYMMDD or release-YYYYMMDD-<qualifier>" >&2
+              exit 1
+            fi
+            LATEST_SUFFIX="latest"
+            CHECKOUT_REF="$tag"
+          }
 
           CHECKOUT_REF=""
           if [ "$EVENT_NAME" = "release" ]; then
-            TAG_SUFFIX="${RELEASE_TAG#Release-}"
-            LATEST_SUFFIX="latest"
-            CHECKOUT_REF="$RELEASE_TAG"
+            resolve_release "$RELEASE_TAG"
           elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$DISPATCH_TAGS" ]; then
-            case "$DISPATCH_TAGS" in
-              Release-*) ;;
-              *) echo "::error::workflow_dispatch input 'tags' must start with 'Release-' (got '$DISPATCH_TAGS')" >&2; exit 1 ;;
-            esac
-            TAG_SUFFIX="${DISPATCH_TAGS#Release-}"
-            LATEST_SUFFIX="latest"
-            CHECKOUT_REF="$DISPATCH_TAGS"
+            resolve_release "$DISPATCH_TAGS"
           else
             SHORT_SHA="${SHA:0:7}"
             TAG_SUFFIX="dev-${SHORT_SHA}"

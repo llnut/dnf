@@ -57,6 +57,9 @@ if command -v shellcheck >/dev/null 2>&1; then
     sc_targets=(
         .github/scripts/run-shell-tests.sh
         .github/scripts/prune-dev-tags.sh
+        .github/scripts/cache-slug.sh
+        .github/scripts/release-tag.sh
+        .github/scripts/release-tag.test.sh
         build/dnf_data/home/template/init/lib/s6-runprobe
         build/dnf_data/home/template/init/lib/probe-tcp-port.sh
         build/dnf_data/home/template/init/lib/probe-tcp-port.test.sh
