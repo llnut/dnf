@@ -1,0 +1,71 @@
+# check=skip=SecretsUsedInArgOrEnv
+ARG BASE_TAG=ubuntu26-base
+
+# 下载MySQL 5.7
+FROM tommy4326/mysql:5.7.44-arm64 AS mysql-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates binutils libjemalloc2 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN MYSQL=/usr/local/mysql && \
+    mkdir -p /mysql/bin /mysql/lib /mysql/share /mysql/allocator && \
+    cp -L ${MYSQL}/bin/mysql ${MYSQL}/bin/mysqld \
+       ${MYSQL}/bin/mysqladmin ${MYSQL}/bin/mysqldump /mysql/bin/ && \
+    strip /mysql/bin/mysql /mysql/bin/mysqld /mysql/bin/mysqladmin /mysql/bin/mysqldump && \
+    cp -a ${MYSQL}/lib/*.so* /mysql/lib/ && \
+    strip --strip-unneeded /mysql/lib/*.so* && \
+    cp -L /lib/aarch64-linux-gnu/libssl.so.1.1 /mysql/lib/ && \
+    cp -L /lib/aarch64-linux-gnu/libcrypto.so.1.1 /mysql/lib/ && \
+    cp -L /usr/lib/aarch64-linux-gnu/libjemalloc.so.2 /mysql/allocator/libjemalloc.so.2 && \
+    strip --strip-unneeded /mysql/allocator/libjemalloc.so.2 && \
+    cp -r ${MYSQL}/share/english ${MYSQL}/share/charsets /mysql/share/ && \
+    (cp ${MYSQL}/share/*.sql ${MYSQL}/share/errmsg-utf8.txt /mysql/share/ 2>/dev/null; true) && \
+    rm -rf /tmp/*
+
+FROM vae555/dnf:${BASE_TAG}
+
+ENV DNF_DB_ROOT_PASSWORD=88888888 \
+    PATH="/usr/local/mysql/bin:${PATH}" \
+    AUTO_TUNE=true \
+    TUNE_PROFILE='' \
+    TUNE_VERBOSE=false
+
+COPY --from=mysql-builder /mysql/bin/ /usr/local/mysql/bin/
+COPY --from=mysql-builder /mysql/lib/ /usr/local/mysql/lib/
+COPY --from=mysql-builder /mysql/share/ /usr/local/mysql/share/
+COPY --from=mysql-builder /mysql/allocator/libjemalloc.so.2 /usr/lib/libjemalloc.so.2
+
+# 安装MySQL 5.7依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libaio1t64 libnuma1 libcrypt1 \
+    && ln -sf /usr/lib/aarch64-linux-gnu/libaio.so.1t64 /usr/lib/aarch64-linux-gnu/libaio.so.1 \
+    && groupadd mysql && useradd -r -g mysql -s /bin/false mysql \
+    && mkdir -p /var/lib/mysql /var/run/mysqld /var/log/mysql \
+    && chown -R mysql:mysql /var/lib/mysql /var/run/mysqld /var/log/mysql \
+    && chmod 750 /var/lib/mysql /var/run/mysqld \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# MySQL符号链接和初始化脚本
+RUN for bin in mysql mysqladmin mysqldump; do \
+        ln -sf /usr/local/mysql/bin/$bin /usr/bin/$bin; \
+    done \
+    && ln -sf /usr/local/mysql/bin/mysqld /usr/sbin/mysqld \
+    && echo '/usr/local/mysql/lib' > /etc/ld.so.conf.d/mysql.conf && ldconfig \
+    && rm -rf /tmp/* /var/tmp/*
+
+
+COPY build/dnf_data/home/template/init/lib/common.sh \
+     build/dnf_data/home/template/init/lib/mysql.sh \
+     build/dnf_data/home/template/init/lib/tune.sh \
+     /home/template/init/lib/
+
+COPY build/dnf_data/etc/my.cnf /etc/
+
+COPY --chmod=0755 build/dnf_data/db-entrypoint.sh /db-entrypoint.sh
+
+VOLUME /var/lib/mysql
+EXPOSE 4000
+CMD ["/bin/bash", "/db-entrypoint.sh"]

@@ -1,0 +1,154 @@
+# check=skip=SecretsUsedInArgOrEnv
+ARG BASE_TAG=ubuntu26-base
+
+FROM --platform=amd64 llnut/dnf:ubuntu26-qf1031-latest AS builder
+
+FROM tommy4326/mysql:5.7.44-arm64 AS mysql-builder
+
+# 安装MySQL 5.7客户端
+RUN MYSQL=/usr/local/mysql && \
+    mkdir -p /mysql/bin /mysql/lib && \
+    cp -L ${MYSQL}/bin/mysql ${MYSQL}/bin/mysqladmin \
+       ${MYSQL}/bin/mysqldump ${MYSQL}/bin/my_print_defaults /mysql/bin/ && \
+    strip /mysql/bin/mysql /mysql/bin/mysqladmin \
+          /mysql/bin/mysqldump /mysql/bin/my_print_defaults && \
+    cp -a ${MYSQL}/lib/*.so* /mysql/lib/ && \
+    strip --strip-unneeded /mysql/lib/*.so* && \
+    cp -L /lib/aarch64-linux-gnu/libssl.so.1.1 /mysql/lib/ && \
+    cp -L /lib/aarch64-linux-gnu/libcrypto.so.1.1 /mysql/lib/ && \
+    rm -rf /tmp/*
+
+FROM vae555/dnf:${BASE_TAG}
+
+COPY --from=builder /usr/local/share/GeoIP /usr/local/share/GeoIP
+COPY --from=builder /usr/lib/libglibc_compat.so /usr/lib/libglibc_compat.so
+COPY --from=builder /lib/i386-linux-gnu/libGeoIP.so.1 /lib/i386-linux-gnu/libGeoIP.so.1
+COPY --from=builder /usr/lib/i386-linux-gnu/ /usr/lib/i386-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/ /usr/lib/x86_64-linux-gnu/
+
+RUN ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5 \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6  /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+
+COPY --from=mysql-builder /mysql/bin/ /usr/local/mysql/bin/
+COPY --from=mysql-builder /mysql/lib/ /usr/local/mysql/lib/
+
+# 配置MySQL客户端
+RUN for bin in mysql mysqladmin mysqldump my_print_defaults; do \
+        ln -sf /usr/local/mysql/bin/$bin /usr/bin/$bin; \
+    done \
+    && echo '/usr/local/mysql/lib' > /etc/ld.so.conf.d/mysql.conf \
+    && ldconfig
+
+# 安装服务端依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates openssl \
+    libjemalloc2 \
+    socat \
+    # 安装jemalloc
+    && cp -L /usr/lib/i386-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc32.so.2 \
+    && cp -L /usr/lib/aarch64-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc.so.2 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /root/.cache
+
+# 安装 s6-overlay
+ARG S6_OVERLAY_VERSION=3.2.3.0
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp/
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-aarch64.tar.xz /tmp/
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils \
+    && tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-aarch64.tar.xz \
+    && rm -f /tmp/s6-overlay-*.tar.xz \
+    && apt-get purge -y --auto-remove xz-utils \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 解压32位共享库
+RUN cd /tmp \
+    && curl -fsSLO https://raw.githubusercontent.com/llnut/dnf_util/refs/heads/main/common_pkgs/lib.tgz \
+    && tar -zxf lib.tgz \
+    && rm -f /tmp/libGeoIP* \
+    && (mv /tmp/*.so /lib/i386-linux-gnu/ 2>/dev/null; true) \
+    && (mv /tmp/*.so.1 /lib/i386-linux-gnu/ 2>/dev/null; true) \
+    && rm -rf /tmp/*
+
+# 下载并校验dnf-gate-server
+ARG GATE_VERSION="0.5.0"
+RUN GATE_REPO="llnut/dnf-login" && GATE_TARGET="aarch64-unknown-linux-musl" && \
+    if [ -z "${GATE_VERSION}" ]; then \
+        GATE_VERSION=$(curl -fsSL "https://api.github.com/repos/${GATE_REPO}/releases/latest" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\(.*\)".*/\1/'); \
+    fi && \
+    [ -n "$GATE_VERSION" ] || { echo "ERROR: failed to fetch latest dnf-gate-server version" >&2; exit 1; } && \
+    GATE_ASSET="dnf-gate-server-${GATE_VERSION}-${GATE_TARGET}.tar.gz" && \
+    GATE_URL="https://github.com/${GATE_REPO}/releases/download/${GATE_VERSION}/${GATE_ASSET}" && \
+    curl -fsSL -o "/tmp/${GATE_ASSET}" "${GATE_URL}" && \
+    curl -fsSL -o "/tmp/${GATE_ASSET}.sha256" "${GATE_URL}.sha256" && \
+    EXPECTED=$(awk '{print $1}' "/tmp/${GATE_ASSET}.sha256") && \
+    ACTUAL=$(sha256sum "/tmp/${GATE_ASSET}" | awk '{print $1}') && \
+    [ "$EXPECTED" = "$ACTUAL" ] || { echo "ERROR: checksum mismatch for ${GATE_ASSET}" >&2; exit 1; } && \
+    tar -xzf "/tmp/${GATE_ASSET}" --strip-components=1 -C /usr/bin "dnf-gate-server-${GATE_VERSION}-${GATE_TARGET}/dnf-gate-server" && \
+    rm -rf /tmp/*
+
+# 安装FEX-emu
+RUN update-ca-certificates -f \
+  && apt-get update && apt-get install -y --no-install-recommends software-properties-common gnupg fuse3 jq \
+  && add-apt-repository -y ppa:fex-emu/fex \
+  && apt-get update && apt-get install -y --no-install-recommends fex-emu-armv8.0 \
+  && apt-get update && apt-get install -y --no-install-recommends fex-emu-binfmt32 fex-emu-binfmt64 || true
+
+RUN ROOTFS_URL=$(curl -s https://rootfs.fex-emu.gg/RootFS_links.json | jq -r '.v1 | to_entries[] | select(.value.DistroMatch == "ubuntu" and .value.DistroVersion == "24.04" and .value.Type == "squashfs") | .value.URL') \
+  && echo "Downloading RootFS from: $ROOTFS_URL" && mkdir -p /root/.fex-emu/RootFS && curl -L -o /root/.fex-emu/RootFS/Ubuntu_24_04.sqsh "$ROOTFS_URL" \
+  && echo '{"Config":{"RootFS":"Ubuntu_24_04.sqsh"}}' > /root/.fex-emu/Config.json
+
+ENV S6_STAGE2_HOOK=/etc/s6-overlay/scripts/stage2-hook.sh \
+    S6_BEHAVIOUR_IF_STAGE2_FAILS=1 \
+    PATH="/command:${PATH}" \
+    MAIN_BRIDGE_IP='127.0.0.1' \
+    SERVER_GROUP_DB='cain' \
+    SERVER_GROUP=3 \
+    MAIN_MYSQL_HOST='' \
+    MAIN_MYSQL_PORT='' \
+    MAIN_MYSQL_ROOT_PASSWORD='' \
+    MAIN_MYSQL_GAME_ALLOW_IP='' \
+    MYSQL_HOST='' \
+    MYSQL_PORT='' \
+    MYSQL_GAME_ALLOW_IP='' \
+    AUTO_PUBLIC_IP=false \
+    PUBLIC_IP='' \
+    DNF_DB_ROOT_PASSWORD=88888888 \
+    DNF_DB_GAME_PASSWORD='uu5!^%jg' \
+    OPEN_CHANNEL='11,52' \
+    DDNS_ENABLE=false \
+    DDNS_DOMAIN='' \
+    DDNS_INTERVAL=10 \
+    NB_SETUP_KEY='' \
+    NB_MANAGEMENT_URL='' \
+    TS_AUTH_KEY='' \
+    TS_LOGIN_SERVER='https://controlplane.tailscale.com' \
+    DB_USER=game \
+    DB_NAME=d_taiwan \
+    GATE_AES_KEY='' \
+    GATE_BIND_ADDRESS='0.0.0.0:5505' \
+    GATE_RUST_LOG='info,dnf_gate_server=debug' \
+    RSA_PRIVATE_KEY_PATH='/data/privatekey.pem' \
+    INITIAL_CERA=1000 \
+    INITIAL_CERA_POINT=0 \
+    GATE_TLS_CERT_PATH='' \
+    GATE_TLS_KEY_PATH='' \
+    GATE_TLS_BIND_ADDRESS='0.0.0.0:5504' \
+    GATE_TLS_ONLY=false \
+    GATE_REGISTRATION_OPEN=true \
+    GAME_SERVER_IP='' \
+    PUBKEY_OVERWRITE=false \
+    AUTO_TUNE=true \
+    TUNE_PROFILE='' \
+    TUNE_VERBOSE=false
+
+COPY build/dnf_data/ /
+
+RUN rm -rf /home/template/neople/game/history \
+    && rm -rf /tmp/* /var/tmp/* /root/.cache
+
+WORKDIR /root
+ENTRYPOINT ["/bin/sh", "-c", "\
+    mountpoint -q /proc/sys/fs/binfmt_misc || mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc; \
+    [ -e /proc/sys/fs/binfmt_misc/FEX-x86 ] || cat /usr/lib/binfmt.d/FEX-x86.conf > /proc/sys/fs/binfmt_misc/register; \
+    [ -e /proc/sys/fs/binfmt_misc/FEX-x86_64 ] || cat /usr/lib/binfmt.d/FEX-x86_64.conf > /proc/sys/fs/binfmt_misc/register; \
+    exec /init"]
