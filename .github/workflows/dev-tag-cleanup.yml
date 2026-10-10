@@ -26,7 +26,7 @@ env:
 jobs:
   cleanup:
     name: Prune old dev commit tags
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v6.0.2
         with:

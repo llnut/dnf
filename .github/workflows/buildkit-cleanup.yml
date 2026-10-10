@@ -23,7 +23,7 @@ permissions:
 jobs:
   cleanup:
     name: Prune buildkit mirror snapshot tags
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Prune old buildkit snapshot versions
         env:
