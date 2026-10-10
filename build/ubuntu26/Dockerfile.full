@@ -9,20 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl gcc-multilib binutils git \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装Rust
-ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH="/usr/local/cargo/bin:${PATH}"
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal \
-    && rustup target add i686-unknown-linux-gnu
-
 # 下载GeoIP数据库
 RUN mkdir -p /usr/local/share/GeoIP && \
     curl -fsSL -o /usr/local/share/GeoIP/GeoIP.dat.gz https://mailfud.org/geoip-legacy/GeoIP.dat.gz && \
     gunzip /usr/local/share/GeoIP/GeoIP.dat.gz
 
-# 编译dnf-compat-layer
-# 安装Rust的层可能命中旧缓存，编译前先更新到最新stable
+# 安装Rust并编译dnf-compat-layer
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH="/usr/local/cargo/bin:${PATH}"
 ARG DNF_COMPAT_LAYER_VERSION="0.3.0"
-RUN rustup update stable --no-self-update \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal \
+    && rustup target add i686-unknown-linux-gnu \
     && git clone --branch ${DNF_COMPAT_LAYER_VERSION} --depth 1 https://github.com/llnut/dnf-compat-layer.git /src \
     && cd /src && cargo build --workspace --release --target i686-unknown-linux-gnu
 
