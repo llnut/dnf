@@ -20,8 +20,10 @@ RUN mkdir -p /usr/local/share/GeoIP && \
     gunzip /usr/local/share/GeoIP/GeoIP.dat.gz
 
 # 编译dnf-compat-layer
+# 安装Rust的层可能命中旧缓存，编译前先更新到最新stable
 ARG DNF_COMPAT_LAYER_VERSION="0.3.0"
-RUN git clone --branch ${DNF_COMPAT_LAYER_VERSION} --depth 1 https://github.com/llnut/dnf-compat-layer.git /src \
+RUN rustup update stable --no-self-update \
+    && git clone --branch ${DNF_COMPAT_LAYER_VERSION} --depth 1 https://github.com/llnut/dnf-compat-layer.git /src \
     && cd /src && cargo build --workspace --release --target i686-unknown-linux-gnu
 
 # 安装MySQL 5.7客户端
